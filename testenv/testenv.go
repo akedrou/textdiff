@@ -9,7 +9,6 @@ package testenv
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -33,7 +32,10 @@ func packageMainIsDevel() bool {
 	return info.Main.Version == "(devel)"
 }
 
-func hasTool(tool string) error {
+// HasTool reports an error if the required tool is not available in PATH.
+//
+// For certain tools, it checks that the tool executable is correct.
+func HasTool(tool string) error {
 	_, err := exec.LookPath(tool)
 	if err != nil {
 		return err
@@ -42,7 +44,7 @@ func hasTool(tool string) error {
 	switch tool {
 	case "patch":
 		// check that the patch tools supports the -o argument
-		temp, err := ioutil.TempFile("", "patch-test")
+		temp, err := os.CreateTemp("", "patch-test")
 		if err != nil {
 			return err
 		}
@@ -69,9 +71,10 @@ func hasTool(tool string) error {
 }
 
 func allowMissingTool(tool string) bool {
-	if runtime.GOOS == "android" {
-		// Android builds generally run tests on a separate machine from the build,
-		// so don't expect any external tools to be available.
+	switch runtime.GOOS {
+	case "aix", "darwin", "dragonfly", "freebsd", "illumos", "linux", "netbsd", "openbsd", "plan9", "solaris", "windows":
+		// Known non-mobile OS. Expect a reasonably complete environment.
+	default:
 		return true
 	}
 
@@ -96,13 +99,19 @@ func allowMissingTool(tool string) bool {
 // NeedsTool skips t if the named tool is not present in the path.
 // As a special case, "cgo" means "go" is present and can compile cgo programs.
 func NeedsTool(t testing.TB, tool string) {
-	err := hasTool(tool)
+	err := HasTool(tool)
 	if err == nil {
 		return
 	}
 
 	t.Helper()
 	if allowMissingTool(tool) {
+		// TODO(adonovan): if we skip because of (e.g.)
+		// mismatched go env GOROOT and runtime.GOROOT, don't
+		// we risk some users not getting the coverage they expect?
+		// bcmills notes: this shouldn't be a concern as of CL 404134 (Go 1.19).
+		// We could probably safely get rid of that GOPATH consistency
+		// check entirely at this point.
 		t.Skipf("skipping because %s tool not available: %v", tool, err)
 	} else {
 		t.Fatalf("%s tool not available: %v", tool, err)

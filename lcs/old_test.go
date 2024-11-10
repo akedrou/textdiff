@@ -6,9 +6,9 @@ package lcs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 )
@@ -129,7 +129,7 @@ func TestRandOld(t *testing.T) {
 }
 
 // TestDiffAPI tests the public API functions (Diff{Bytes,Strings,Runes})
-// to ensure at least miminal parity of the three representations.
+// to ensure at least minimal parity of the three representations.
 func TestDiffAPI(t *testing.T) {
 	for _, test := range []struct {
 		a, b                              string
@@ -218,7 +218,7 @@ func genBench(set string, n int) []struct{ before, after string } {
 // itself minus the last byte is faster still; I don't know why.
 // There is much low-hanging fruit here for further improvement.
 func BenchmarkLargeFileSmallDiff(b *testing.B) {
-	data, err := ioutil.ReadFile("old.go") // large file
+	data, err := os.ReadFile("old.go") // large file
 	if err != nil {
 		log.Fatal(err)
 	}
